@@ -331,13 +331,14 @@
     setText("[data-config='minHood']", (cfg && cfg.minHood) || "any");
     setText("[data-config='interval']", (cfg && cfg.distributionInterval) || "30 minutes");
     setText("[data-config='chain']", (cfg && cfg.chainName) || "Robinhood Chain");
+    setText("[data-config='basket']", (cfg && cfg.basketName) || "Mag8");
   }
 
   /**
    * Form 4663-R · Membership dividend receipt
    * Populates named tokens for HTML (and mirrors SVG field map):
    * status_stamp, member_name, card_number, record, run_posted,
-   * est_value, asset_1..6 ticker/amount, tx_url_label
+   * est_value, asset_N ticker/amount (full Mag8 basket), tx_url_label
    */
   function parseReceiptAssets(dist) {
     if (!dist) return [];
@@ -453,7 +454,8 @@
 
     if (assetsEl) {
       assetsEl.innerHTML = "";
-      var rows = parseReceiptAssets(dist).slice(0, 6);
+      // Full Mag8 basket (8 names) — do not cap at the old 6-line BANG layout
+      var rows = parseReceiptAssets(dist);
       if (!rows.length) {
         var tr0 = document.createElement("tr");
         tr0.className = "is-placeholder";
