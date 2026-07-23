@@ -39,7 +39,7 @@
       <p class="local-line">Form 4663-P · Membership portfolio</p>
       <h1>Your portfolio</h1>
       <p class="lede">
-        Personal record for the connected member: $HOOD balance, hall share, stock tokens earned,
+        Personal record for the connected member: $HOOD position, hall share, estimated yield,
         and your membership dividend receipt. Dividends arrive as stock tokens —
         not more $HOOD.
       </p>
@@ -128,30 +128,30 @@
       <section class="section" aria-labelledby="receipt-title">
         <div class="form-head">
           <span class="form-id">Form 4663-R · Membership dividend receipt</span>
-          <span class="form-meta">Latest run · personal slip</span>
+          <span class="form-meta">Live position · yield desk</span>
         </div>
         <h2 class="section-title" id="receipt-title">Membership dividend receipt</h2>
         <p class="section-note">
-          Official slip for your share of the latest hall run. Stocks paid to you —
-          not additional $HOOD. Link opens the on-chain transaction when live.
+          Live view of your position — hall share, Mag8 stocks on the books, and an estimated
+          yield from dues volume. Not a slip for a single distribution run (those live under
+          Receipt history). Estimates move with volume, price, and eligible supply.
         </p>
         <!--
-          Form 4663-R · Membership Dividend Receipt
-          Populatable tokens: {{status_stamp}} {{member_name}} {{card_number}}
-          {{record}} {{run_posted}} {{est_value}} {{asset_N_ticker}} {{asset_N_amount}}
-          {{tx_url_label}} — see docs/RECEIPT_FORM_4663_R.md
+          Form 4663-R · Membership Dividend Receipt (position view)
+          Live position + BANG-style yield calculator (position · daily volume →
+          day / month / year / APY / share). Per-run slips stay in receipt history.
         -->
-        <div class="receipt" data-dividend-receipt data-receipt-state="empty">
+        <div class="receipt receipt-position" data-dividend-receipt data-receipt-state="empty">
           <header class="receipt-banner">
             <div class="receipt-banner-text">
               <div class="receipt-banner-title">Local 4663 · Dividend receipt</div>
-              <div class="receipt-banner-form">Form 4663-R</div>
+              <div class="receipt-banner-form">Form 4663-R · Position</div>
             </div>
             <span
               class="receipt-stamp is-empty"
               data-receipt="status_stamp"
               data-token="status_stamp"
-              aria-label="Payment status"
+              aria-label="Membership status"
             >—</span>
           </header>
 
@@ -170,46 +170,104 @@
                 <span class="v v-record" data-receipt="record" data-token="record" data-field="address">—</span>
               </div>
               <div class="receipt-row" role="listitem">
-                <span class="k">Run posted</span>
-                <span class="v" data-receipt="run_posted" data-token="run_posted">—</span>
+                <span class="k">$HOOD position</span>
+                <span class="v" data-receipt="hood_position" data-field="hoodBalance">—</span>
               </div>
               <div class="receipt-row" role="listitem">
-                <span class="k">Est. value</span>
-                <span class="v v-value" data-receipt="est_value" data-token="est_value">—</span>
+                <span class="k">Position value</span>
+                <span class="v v-value" data-receipt="position_value" data-field="hoodValue">—</span>
+              </div>
+              <div class="receipt-row" role="listitem">
+                <span class="k">Share of hall</span>
+                <span class="v v-value" data-receipt="share" data-field="share">—</span>
+              </div>
+              <div class="receipt-row" role="listitem">
+                <span class="k">Stocks earned</span>
+                <span class="v v-value" data-receipt="stocks_value" data-field="dividendValue">—</span>
+              </div>
+            </div>
+
+            <!-- Yield calculator · position + daily volume (BANG-style) -->
+            <div class="yield-calc" data-yield-calc>
+              <div class="receipt-assets-label">Yield calculator · what you’d earn</div>
+              <div class="yc-inputs">
+                <label class="yc-field">
+                  <span>Your position ($HOOD)</span>
+                  <span class="yc-inwrap">
+                    <span class="yc-pfx">HOOD</span>
+                    <input
+                      id="yc-position"
+                      class="yc-input"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="any"
+                      data-yc-position
+                      value="500000"
+                      aria-label="Your $HOOD position"
+                    >
+                  </span>
+                </label>
+                <label class="yc-field">
+                  <span>Daily volume (USD)</span>
+                  <span class="yc-inwrap">
+                    <span class="yc-pfx">$</span>
+                    <input
+                      id="yc-volume"
+                      class="yc-input"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="any"
+                      data-yc-volume
+                      value="25000"
+                      aria-label="Assumed daily trading volume in USD"
+                    >
+                  </span>
+                </label>
+              </div>
+              <div class="yc-out" data-yc-out>
+                <div class="yc-big">
+                  <span data-yc-month>—</span><span class="yc-unit">/ month</span>
+                </div>
+                <div class="yc-grid">
+                  <div><span class="yc-k">Per day</span><span class="yc-v" data-yc-day>—</span></div>
+                  <div><span class="yc-k">Per year</span><span class="yc-v" data-yc-year>—</span></div>
+                  <div><span class="yc-k">Est. APY</span><span class="yc-v yc-accent" data-yc-apy>—</span></div>
+                  <div><span class="yc-k">Your share</span><span class="yc-v" data-yc-share>—</span></div>
+                </div>
+                <p class="yc-note" data-yc-note>
+                  Estimate from dues fee on volume. Real payouts move with volume, price, and eligible supply.
+                </p>
               </div>
             </div>
 
             <div class="receipt-assets" data-receipt="assets_block">
-              <div class="receipt-assets-label">Stock tokens received</div>
-              <table class="receipt-table" aria-label="Stock tokens received">
+              <div class="receipt-assets-label">Mag8 position · stocks on the books</div>
+              <table class="receipt-table" aria-label="Mag8 stock tokens held">
                 <thead>
                   <tr>
                     <th scope="col">Ticker</th>
                     <th scope="col">Amount</th>
+                    <th scope="col">Est. value</th>
                   </tr>
                 </thead>
                 <tbody data-receipt="assets" data-token="assets">
-                  <!-- rows filled by hall.js: full Mag8 asset list -->
+                  <!-- rows filled by hall.js from stocksEarned (lifetime position) -->
                 </tbody>
               </table>
               <div class="receipt-empty hidden" data-receipt="empty_msg" hidden>
-                <p>No receipts yet.</p>
-                <p>Clock in and become eligible for future distributions.</p>
+                <p>No position on file.</p>
+                <p>Clock in to load your membership dividend receipt.</p>
               </div>
             </div>
 
             <p class="receipt-note">
-              Tokenized stock tokens · not brokerage shares ·
-              no issuer voting rights
+              Tokenized stock tokens · not brokerage shares · no issuer voting rights.
+              Yield figures are illustrative estimates, not guarantees.
             </p>
             <p class="receipt-tx">
-              <a
-                href="#"
-                data-receipt="tx"
-                data-token="tx_url_label"
-                target="_blank"
-                rel="noopener"
-              >View transaction →</a>
+              <a href="#your-dist-title">Open receipt history →</a>
             </p>
           </div>
         </div>
@@ -234,7 +292,10 @@
           <span class="form-meta">Personal postings</span>
         </div>
         <h2 class="section-title" id="your-dist-title">Receipt history</h2>
-        <p class="section-note">Each row is a dividend receipt. Opens the on-chain transaction.</p>
+        <p class="section-note">
+          Each row is a past membership dividend posting for this member (one distribution run).
+          Opens the on-chain transaction when live. The live position is on Form 4663-R above.
+        </p>
 
         <div class="table-wrap desktop-only">
           <table class="ledger">
@@ -278,7 +339,7 @@
     </div>
   </footer>
 
-  <script src="js/mock-data.js?v=hood500k"></script>
-  <script src="js/hall.js?v=mag8-2"></script>
+  <script src="js/mock-data.js?v=yield-pos"></script>
+  <script src="js/hall.js?v=yield-pos"></script>
 </body>
 </html>

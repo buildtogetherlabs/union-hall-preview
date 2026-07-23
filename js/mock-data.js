@@ -44,6 +44,17 @@ window.IBH.config = {
   distributionInterval: "30 minutes",
   /** Dividend basket label (owner can update on-chain; UI mock tracks product intent). */
   basketName: "Mag8",
+  /**
+   * Yield calculator defaults (BANG-style: position × share of fee stream on volume).
+   * dailyVolumeUsd — assumed $HOOD buy+sell volume / day
+   * feeEfficiency — fraction of dues that reach stock buys after path costs (BANG uses ~0.99)
+   * eligibleSupply — HOOD balances eligible for dividends (demo float; not full 1B mint)
+   */
+  yieldCalc: {
+    dailyVolumeUsd: 25000,
+    feeEfficiency: 0.99,
+    eligibleSupply: 40000000,
+  },
   contracts: {
     ReflectionToken: {
       address: "—",

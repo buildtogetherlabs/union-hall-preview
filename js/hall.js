@@ -301,7 +301,7 @@
       card.innerHTML =
         '<div class="notice-ticker">' +
         escapeHtml(s.ticker) +
-        '</div><div class="notice-name">Stock token received</div>' +
+        '</div><div class="notice-name">Mag8 position</div>' +
         '<div class="notice-row"><span>Amount</span><span>' +
         escapeHtml(s.amount) +
         '</span></div><div class="notice-row"><span>Est. value</span><span>' +
@@ -336,44 +336,97 @@
 
   /**
    * Form 4663-R · Membership dividend receipt
-   * Populates named tokens for HTML (and mirrors SVG field map):
-   * status_stamp, member_name, card_number, record, run_posted,
-   * est_value, asset_N ticker/amount (full Mag8 basket), tx_url_label
+   * Live position view (not a single-run slip):
+   * member meta, Mag8 holdings, yield calculator (position × daily volume).
+   * Per-run slips remain under receipt history.
    */
-  function parseReceiptAssets(dist) {
-    if (!dist) return [];
-    if (Array.isArray(dist.lines) && dist.lines.length) {
-      return dist.lines
-        .map(function (row) {
-          return {
-            ticker: String(row.ticker || "").trim(),
-            amount: String(row.amount || "").trim(),
-          };
-        })
-        .filter(function (row) {
-          return row.ticker || row.amount;
-        });
-    }
-    return String(dist.assets || "")
-      .split("·")
-      .map(function (s) {
-        return s.trim();
+  function parseNum(v) {
+    if (typeof v === "number") return v;
+    if (v == null) return NaN;
+    return parseFloat(String(v).replace(/[$,%\s,]/g, ""));
+  }
+
+  function formatMoney(n, digits) {
+    if (!isFinite(n)) return "—";
+    var d = digits == null ? 2 : digits;
+    return (
+      "$" +
+      n.toLocaleString("en-US", {
+        minimumFractionDigits: d,
+        maximumFractionDigits: d,
       })
-      .filter(Boolean)
-      .map(function (line) {
-        var parts = line.split(/\s+/);
-        return {
-          ticker: parts[0] || "",
-          amount: parts.slice(1).join(" ") || "",
-        };
-      });
+    );
+  }
+
+  function formatPct(n, digits) {
+    if (!isFinite(n)) return "—";
+    var d = digits == null ? 2 : digits;
+    return n.toFixed(d) + "%";
+  }
+
+  function formatHoodAmount(n) {
+    if (!isFinite(n)) return "—";
+    return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+
+  function yieldConfig() {
+    var cfg = (window.IBH && window.IBH.config) || {};
+    var y = cfg.yieldCalc || {};
+    var feeBps = cfg.feeBps != null ? cfg.feeBps : 350;
+    return {
+      feeRate: feeBps / 10000,
+      feeLabel: cfg.feeLabel || "3.5%",
+      efficiency: y.feeEfficiency != null ? y.feeEfficiency : 0.99,
+      eligibleSupply: y.eligibleSupply != null ? y.eligibleSupply : 40000000,
+      defaultVolume: y.dailyVolumeUsd != null ? y.dailyVolumeUsd : 25000,
+      hoodPrice: parseNum(
+        window.IBH && window.IBH.mock && window.IBH.mock.protocol
+          ? window.IBH.mock.protocol.hoodPriceUsd
+          : NaN
+      ),
+    };
+  }
+
+  /**
+   * BANG-style yield estimate:
+   * share = position / eligibleSupply
+   * dailyDues = volumeUsd * feeRate * efficiency
+   * daily = share * dailyDues
+   * month = daily * 30 · year = daily * 365 · apy = year / positionUsd
+   */
+  function computeYield(positionHood, volumeUsd) {
+    var y = yieldConfig();
+    var pos = Math.max(0, positionHood || 0);
+    var vol = Math.max(0, volumeUsd || 0);
+    var supply = y.eligibleSupply > 0 ? y.eligibleSupply : 1;
+    var share = pos > 0 ? Math.min(1, pos / supply) : 0;
+    var dailyDues = vol * y.feeRate * y.efficiency;
+    var day = share * dailyDues;
+    var month = day * 30;
+    var year = day * 365;
+    var posUsd = y.hoodPrice > 0 ? pos * y.hoodPrice : 0;
+    var apy = posUsd > 0 ? (year / posUsd) * 100 : 0;
+    return {
+      day: day,
+      month: month,
+      year: year,
+      apy: apy,
+      share: share * 100,
+      posUsd: posUsd,
+      feeLabel: y.feeLabel,
+      volume: vol,
+      position: pos,
+    };
   }
 
   function setReceiptStamp(el, status) {
     if (!el) return;
     var stamp = String(status || "").toUpperCase();
-    el.classList.remove("is-paid", "is-pending", "is-empty");
-    if (stamp === "PAID") {
+    el.classList.remove("is-paid", "is-pending", "is-empty", "is-live");
+    if (stamp === "LIVE" || stamp === "OPEN") {
+      el.textContent = "LIVE";
+      el.classList.add("is-paid", "is-live");
+    } else if (stamp === "PAID") {
       el.textContent = "PAID";
       el.classList.add("is-paid");
     } else if (stamp === "PENDING") {
@@ -382,6 +435,104 @@
     } else {
       el.textContent = "—";
       el.classList.add("is-empty");
+    }
+  }
+
+  function fillPositionAssets(assetsEl, stocks) {
+    if (!assetsEl) return;
+    assetsEl.innerHTML = "";
+    if (!stocks || !stocks.length) {
+      var tr0 = document.createElement("tr");
+      tr0.className = "is-placeholder";
+      tr0.innerHTML = '<td class="ticker" colspan="3">No holdings yet</td>';
+      assetsEl.appendChild(tr0);
+      return;
+    }
+    stocks.forEach(function (row, i) {
+      var n = i + 1;
+      var tr = document.createElement("tr");
+      tr.setAttribute("data-asset-index", String(n));
+      var tdT = document.createElement("td");
+      tdT.className = "ticker";
+      tdT.setAttribute("data-token", "asset_" + n + "_ticker");
+      tdT.textContent = row.ticker || "—";
+      var tdA = document.createElement("td");
+      tdA.className = "amount";
+      tdA.setAttribute("data-token", "asset_" + n + "_amount");
+      tdA.textContent = row.amount || "—";
+      var tdU = document.createElement("td");
+      tdU.className = "amount usd";
+      tdU.setAttribute("data-token", "asset_" + n + "_usd");
+      tdU.textContent = row.usd || "—";
+      tr.appendChild(tdT);
+      tr.appendChild(tdA);
+      tr.appendChild(tdU);
+      assetsEl.appendChild(tr);
+    });
+  }
+
+  function renderYieldOutputs(root, result) {
+    if (!root) return;
+    var monthEl = $("[data-yc-month]", root);
+    var dayEl = $("[data-yc-day]", root);
+    var yearEl = $("[data-yc-year]", root);
+    var apyEl = $("[data-yc-apy]", root);
+    var shareEl = $("[data-yc-share]", root);
+    var noteEl = $("[data-yc-note]", root);
+    if (monthEl) monthEl.textContent = formatMoney(result.month);
+    if (dayEl) dayEl.textContent = formatMoney(result.day);
+    if (yearEl) yearEl.textContent = formatMoney(result.year);
+    if (apyEl) apyEl.textContent = formatPct(result.apy, 1);
+    if (shareEl) shareEl.textContent = formatPct(result.share, 3);
+    if (noteEl) {
+      noteEl.textContent =
+        "On " +
+        formatHoodAmount(result.position) +
+        " $HOOD (" +
+        formatMoney(result.posUsd) +
+        ") · " +
+        result.feeLabel +
+        " dues on " +
+        formatMoney(result.volume, 0) +
+        "/day volume. Real payouts move with volume, price, and eligible supply.";
+    }
+  }
+
+  function bindYieldCalculator(root) {
+    if (!root || root.getAttribute("data-yc-bound") === "1") return;
+    var posIn = $("[data-yc-position]", root);
+    var volIn = $("[data-yc-volume]", root);
+    if (!posIn && !volIn) return;
+    root.setAttribute("data-yc-bound", "1");
+
+    function run() {
+      var pos = parseNum(posIn && posIn.value);
+      var vol = parseNum(volIn && volIn.value);
+      renderYieldOutputs(root, computeYield(pos, vol));
+    }
+
+    if (posIn) {
+      posIn.addEventListener("input", run);
+      posIn.addEventListener("change", run);
+    }
+    if (volIn) {
+      volIn.addEventListener("input", run);
+      volIn.addEventListener("change", run);
+    }
+    run();
+  }
+
+  function seedYieldInputs(root, mem) {
+    if (!root) return;
+    var y = yieldConfig();
+    var posIn = $("[data-yc-position]", root);
+    var volIn = $("[data-yc-volume]", root);
+    if (posIn && mem) {
+      var bal = parseNum(mem.hoodBalance);
+      if (isFinite(bal) && bal > 0) posIn.value = String(Math.round(bal));
+    }
+    if (volIn && (!volIn.value || volIn.value === "25000")) {
+      volIn.value = String(y.defaultVolume);
     }
   }
 
@@ -394,105 +545,65 @@
       window.IBH && window.IBH.mock && window.IBH.mock.demoMember
         ? window.IBH.mock.demoMember
         : null;
-    var dist =
-      clocked && mem && mem.distributions && mem.distributions[0]
-        ? mem.distributions[0]
-        : null;
 
     var stampEl = $("[data-receipt='status_stamp']", root);
     var memberEl = $("[data-receipt='member_name']", root);
     var cardEl = $("[data-receipt='card_number']", root);
     var recordEl = $("[data-receipt='record']", root);
-    var runEl = $("[data-receipt='run_posted']", root);
-    var valueEl = $("[data-receipt='est_value']", root);
     var assetsEl = $("[data-receipt='assets']", root);
     var emptyEl = $("[data-receipt='empty_msg']", root);
-    var txEl = $("[data-receipt='tx']", root);
 
     function setVal(el, text) {
       if (el) el.textContent = text == null || text === "" ? "—" : String(text);
     }
 
-    if (!clocked || !mem || !dist) {
+    // Position receipt: fill from live member file, not a single distribution run
+    if (!clocked || !mem) {
       root.setAttribute("data-receipt-state", "empty");
       setReceiptStamp(stampEl, "");
       setVal(memberEl, "—");
       setVal(cardEl, "—");
       setVal(recordEl, "—");
-      setVal(runEl, "—");
-      setVal(valueEl, "—");
+      setVal($("[data-receipt='hood_position']", root), "—");
+      setVal($("[data-receipt='position_value']", root), "—");
+      setVal($("[data-receipt='share']", root), "—");
+      setVal($("[data-receipt='stocks_value']", root), "—");
       if (assetsEl) assetsEl.innerHTML = "";
       if (emptyEl) {
         emptyEl.hidden = false;
         emptyEl.classList.remove("hidden");
       }
-      if (txEl) {
-        txEl.textContent = "View transaction →";
-        txEl.removeAttribute("href");
-        txEl.classList.add("is-disabled");
-      }
+      seedYieldInputs(root, null);
+      bindYieldCalculator(root);
       return;
     }
 
-    var status = dist.status || "PAID";
-    root.setAttribute(
-      "data-receipt-state",
-      String(status).toUpperCase() === "PENDING" ? "pending" : "filled"
-    );
-
-    setReceiptStamp(stampEl, status);
+    root.setAttribute("data-receipt-state", "filled");
+    setReceiptStamp(stampEl, "LIVE");
     setVal(memberEl, mem.memberName);
     setVal(cardEl, mem.cardNumber);
     setVal(recordEl, mem.address);
-    setVal(runEl, dist.date || dist.run_posted);
-    setVal(valueEl, dist.value || dist.est_value);
+    setVal($("[data-receipt='hood_position']", root), mem.hoodBalance);
+    setVal($("[data-receipt='position_value']", root), mem.hoodValueUsd || "—");
+    setVal($("[data-receipt='share']", root), mem.sharePct);
+    setVal($("[data-receipt='stocks_value']", root), mem.dividendValue);
 
     if (emptyEl) {
       emptyEl.hidden = true;
       emptyEl.classList.add("hidden");
     }
 
-    if (assetsEl) {
-      assetsEl.innerHTML = "";
-      // Full Mag8 basket (8 names) — do not cap at the old 6-line BANG layout
-      var rows = parseReceiptAssets(dist);
-      if (!rows.length) {
-        var tr0 = document.createElement("tr");
-        tr0.className = "is-placeholder";
-        tr0.innerHTML =
-          '<td class="ticker" colspan="2">No line items</td>';
-        assetsEl.appendChild(tr0);
-      } else {
-        rows.forEach(function (row, i) {
-          var n = i + 1;
-          var tr = document.createElement("tr");
-          tr.setAttribute("data-asset-index", String(n));
-          var tdT = document.createElement("td");
-          tdT.className = "ticker";
-          tdT.setAttribute("data-token", "asset_" + n + "_ticker");
-          tdT.textContent = row.ticker || "—";
-          var tdA = document.createElement("td");
-          tdA.className = "amount";
-          tdA.setAttribute("data-token", "asset_" + n + "_amount");
-          tdA.textContent = row.amount || "—";
-          tr.appendChild(tdT);
-          tr.appendChild(tdA);
-          assetsEl.appendChild(tr);
-        });
-      }
-    }
-
-    if (txEl) {
-      txEl.textContent = dist.txLabel || "View transaction →";
-      if (dist.tx) {
-        txEl.setAttribute("href", dist.tx);
-        txEl.setAttribute("target", "_blank");
-        txEl.setAttribute("rel", "noopener");
-        txEl.classList.remove("is-disabled");
-      } else {
-        txEl.removeAttribute("href");
-        txEl.classList.add("is-disabled");
-      }
+    fillPositionAssets(assetsEl, mem.stocksEarned || []);
+    seedYieldInputs(root, mem);
+    bindYieldCalculator(root);
+    // Recompute after seed (first bind may have run before seed on cold load)
+    var posIn = $("[data-yc-position]", root);
+    var volIn = $("[data-yc-volume]", root);
+    if (posIn || volIn) {
+      renderYieldOutputs(
+        root,
+        computeYield(parseNum(posIn && posIn.value), parseNum(volIn && volIn.value))
+      );
     }
   }
 
