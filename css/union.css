@@ -1250,6 +1250,29 @@ table.ledger tr.is-link:hover td {
   letter-spacing: 0.04em;
 }
 
+.swap-status {
+  margin: 8px 0 0;
+  font-size: 12px;
+  min-height: 1.2em;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.swap-status.is-error {
+  color: var(--burgundy);
+  font-weight: 600;
+}
+
+.swap-status.is-ok {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.swap-status.is-pending {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .closed-notice p {
   margin: 0 0 12px;
   font-size: 13px;

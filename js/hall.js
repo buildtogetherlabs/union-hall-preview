@@ -627,6 +627,9 @@
   function bindSwapForm() {
     var form = $("[data-swap-form]");
     if (!form) return;
+    // Live testnet swaps are handled by swap-live.js when router is configured.
+    if (window.IBH && window.IBH.config && window.IBH.config.swapRouter) return;
+    if (window.IBH && window.IBH.swapLive) return;
 
     var youPay = $("[data-swap-pay]");
     var youGet = $("[data-swap-get]");
@@ -637,7 +640,6 @@
       var m = window.IBH && window.IBH.mock;
       var price = m && m.protocol ? parseFloat(m.protocol.hoodPriceUsd) : 0;
       var ethIn = parseFloat(youPay && youPay.value ? youPay.value : "0") || 0;
-      // Demo quote only — not a real pool read
       var ethUsd = 3500;
       var hoodOut = price > 0 ? (ethIn * ethUsd) / price : 0;
       if (youGet) {
@@ -672,9 +674,7 @@
       if (cfg && cfg.swapUrl) {
         window.open(cfg.swapUrl, "_blank", "noopener");
       } else {
-        alert(
-          "Swap wiring is not live yet. Set IBH.config.swapUrl after launch, or connect the pool router."
-        );
+        alert("Swap wiring is not live yet.");
       }
     });
   }
@@ -804,6 +804,9 @@
   }
 
   function init() {
+    if (window.IBH && typeof window.IBH.applyTestnetConfig === "function") {
+      window.IBH.applyTestnetConfig();
+    }
     formatConfigLabels();
     formatProtocol();
     renderLatestRun();

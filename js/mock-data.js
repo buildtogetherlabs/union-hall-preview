@@ -20,18 +20,23 @@ window.IBH = window.IBH || {};
  * Tagline: Hold $HOOD. Collect union dividends in stocks — not more $HOOD.
  */
 window.IBH.config = {
-  /** When false, Swap page shows a closed-window notice only (no trade UI). */
-  launched: false,
-  /** Set after deploy — Uniswap / aggregator URL for ETH → $HOOD. */
+  /**
+   * When true, Swap desk is open. Testnet is live after 2026-07-24 redeploy;
+   * chain.js applyTestnetConfig() also forces launched=true.
+   */
+  launched: true,
+  network: "testnet",
+  /** Optional external aggregator; unused when swapRouter is set. */
   swapUrl: "",
   /**
    * Community: Union Hall lives on Telegram (not a product tab).
    * Set to full https://t.me/... URL when ready; footer “Union Hall” uses this.
    */
   telegramUrl: "",
-  chainId: 4663,
-  chainName: "Robinhood Chain",
-  explorerBase: "https://robinhoodchain.blockscout.com",
+  chainId: 46630,
+  chainName: "Robinhood Chain Testnet",
+  explorerBase: "https://explorer.testnet.chain.robinhood.com",
+  rpcUrl: "https://rpc.testnet.chain.robinhood.com",
   /**
    * No minimum holdings — any positive HOOD balance is dividend-eligible.
    * Display label for UI; owner may raise a floor later on-chain if needed.
@@ -57,36 +62,48 @@ window.IBH.config = {
   },
   contracts: {
     ReflectionToken: {
-      address: "—",
+      address: "0xa73533aD0002DAb67b5E22afcC07760f12b097d4",
       role: "HOOD ERC-20 · holder list · any positive balance",
     },
     IndexFeeHook: {
-      address: "—",
+      address: "0xDdd77A1E43769C12B9386e3080E7230e1E4FC0cC",
       role: "Uniswap V4 hook · 3.5% buy+sell fee → treasury",
     },
     StockTreasury: {
-      address: "—",
+      address: "0x2d7cE291087b1d5DFc2B424Bf89C0f434D85ccEc",
       role: "Accumulates trade-fee dues · buys stock tokens",
     },
     StockDistributor: {
-      address: "—",
+      address: "0xE7bC80790c4a6f2d2EBA056E5A98cEA5F8C911d8",
       role: "Pro-rata stock airdrops on the distribution interval",
     },
-    LpLock: { address: "—", role: "Full-range LP seed · fees collectable, LP locked" },
+    LpLock: {
+      address: "0xF0af4d2876F1Fd8B2E240c855aF97e8a69Eb7313",
+      role: "Full-range LP seed · fees collectable, LP locked",
+    },
     PoolManager: {
-      address: "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      address: "0x8366a39CC670B4001A1121B8F6A443A643e40951",
       role: "Uniswap V4 PoolManager (chain)",
     },
+    SwapRouter: {
+      address: "0x374E47C3ca1b06f4C58b1aB5d67Bf74903f17884",
+      role: "PoolSwapTest · UI ETH↔HOOD swaps (testnet)",
+    },
     WETH: {
-      address: "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
-      role: "Wrapped ETH",
+      address: "0x7943e237c7F95DA44E0301572D358911207852Fa",
+      role: "Wrapped ETH (testnet)",
     },
     USDG: {
-      address: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
-      role: "USD stable · Rialto / buy path",
+      address: "0xa927aeC97CD1dD0A0d742fa4A4c50cCE2DA48961",
+      role: "Mock USDG (testnet)",
     },
   },
 };
+
+// Apply live testnet addresses when chain.js is present (loaded after this file on swap page).
+if (typeof window.IBH.applyTestnetConfig === "function") {
+  window.IBH.applyTestnetConfig();
+}
 
 window.IBH.mock = {
   protocol: {
