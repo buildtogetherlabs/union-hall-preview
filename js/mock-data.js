@@ -21,13 +21,22 @@ window.IBH = window.IBH || {};
  */
 window.IBH.config = {
   /**
+   * siteMode:
+   *   "demo"    — mock numbers only (public preview, view-only)
+   *   "testnet" — MetaMask + Robinhood testnet (shareable test site)
+   *   "source"  — private working copy (same as testnet wiring by default)
+   */
+  siteMode: "demo",
+  /**
    * When true, Swap desk is open. Testnet is live after 2026-07-24 redeploy;
    * chain.js applyTestnetConfig() also forces launched=true.
    */
   launched: true,
-  network: "testnet",
+  network: "demo",
   /** Optional external aggregator; unused when swapRouter is set. */
   swapUrl: "",
+  /** Permanent PoolSwapTest on testnet (also set by chain.js applyTestnetConfig). Empty in demo mode. */
+  swapRouter: "",
   /**
    * Community: Union Hall lives on Telegram (not a product tab).
    * Set to full https://t.me/... URL when ready; footer “Union Hall” uses this.

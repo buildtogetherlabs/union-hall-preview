@@ -6,7 +6,7 @@
   <title>Swap — Local 4663</title>
   <meta name="description" content="Swap for $HOOD on Robinhood Chain. Local 4663 exchange desk.">
   <link rel="icon" href="assets/HoodstersLogoWhite.png" type="image/png">
-  <link rel="stylesheet" href="css/union.css?v=testnet-swap">
+  <link rel="stylesheet" href="css/union.css?v=demo">
 </head>
 <body>
   <header class="topbar">
@@ -44,14 +44,9 @@
         (~<span data-config="interval">30 minutes</span>) — no minimum holdings.
         Dividends pay Mag8 stock tokens — not more $HOOD.
       </p>
-      <div class="btn-row" style="margin-top:12px;">
-        <button type="button" class="btn btn-sm" data-wallet-connect>Connect wallet</button>
-        <span class="muted" style="font-size:12px;align-self:center;" data-wallet-label>Not connected</span>
-      </div>
-      <p class="section-note" style="margin-top:10px;">
-        Testnet only · chain id <strong>46630</strong> · faucet
-        <a href="https://faucet.testnet.chain.robinhood.com/" target="_blank" rel="noopener">here</a>.
-        Liquidity is thin — use small amounts (e.g. 0.0001 ETH).
+      <p class="section-note" style="margin-top:12px;"><strong>Demo only</strong> — quotes are mock. No wallet connection.</p>
+      <p class="section-note" style="margin-top:6px;">
+        Public demo · mock numbers only · not a live market.
       </p>
     </section>
 
@@ -70,11 +65,11 @@
     <!-- Live swap desk -->
     <section class="section" style="border-top: none; padding-top: 0;" data-swap-open>
       <div class="form-head">
-        <span class="form-id">Live market · testnet</span>
+        <span class="form-id">Demo market · mock</span>
         <span class="form-meta">ETH → $HOOD</span>
       </div>
       <p class="section-note">
-        MetaMask swaps against the Uniswap v4 ETH/$HOOD pool. Buys include a
+        Illustrative desk only. In production, buys include a
         <span data-config="fee">3.5%</span> distribution fee to the treasury (plus pool fees).
       </p>
 
@@ -134,12 +129,7 @@
       <p>Operates on Robinhood Chain. © Local 4663</p>
     </div>
   </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-  <script src="js/mock-data.js?v=testnet-swap"></script>
-  <script src="js/chain.js?v=testnet-swap"></script>
-  <script src="js/wallet.js?v=testnet-swap"></script>
-  <script src="js/hall.js?v=testnet-swap"></script>
-  <script src="js/swap-live.js?v=testnet-swap"></script>
+<script src="js/mock-data.js?v=demo"></script>
+<script src="js/hall.js?v=demo"></script>
 </body>
 </html>

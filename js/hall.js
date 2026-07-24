@@ -1,7 +1,7 @@
 /**
  * Union Books UI — membership office, books, board, ledger, swap gate, portfolio.
  * Union Hall (Telegram) is community, not a product tab.
- * Clock In is local mock until wallet + chain wiring.
+ * Clock In connects MetaMask on testnet when wallet.js is loaded; otherwise local mock.
  */
 (function () {
   var STORAGE_KEY = "ibh_clocked_in";
@@ -670,13 +670,44 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!isLaunched()) return;
-      var cfg = window.IBH.config;
-      if (cfg && cfg.swapUrl) {
+      var cfg = window.IBH.config || {};
+      if (cfg.siteMode === "demo") {
+        alert("Demo only — mock numbers. No wallet, no transaction.");
+        return;
+      }
+      if (cfg.swapUrl) {
         window.open(cfg.swapUrl, "_blank", "noopener");
       } else {
         alert("Swap wiring is not live yet.");
       }
     });
+  }
+
+  /** Fixed ribbon so people know if this is mock demo vs live testnet. */
+  function renderSiteBanner() {
+    var cfg = window.IBH && window.IBH.config;
+    if (!cfg) return;
+    var mode = cfg.siteMode || "source";
+    if (mode !== "demo" && mode !== "testnet") return;
+    if ($("[data-site-banner]")) return;
+
+    var banner = document.createElement("div");
+    banner.className = "site-banner site-banner--" + mode;
+    banner.setAttribute("data-site-banner", mode);
+    banner.setAttribute("role", "status");
+
+    if (mode === "demo") {
+      banner.innerHTML =
+        "<strong>Demo preview</strong> · Mock numbers only · View-only (no wallet) · Not local4663.com";
+    } else {
+      banner.innerHTML =
+        "<strong>Testnet</strong> · Robinhood Chain " +
+        (cfg.chainId || 46630) +
+        ' · Connect MetaMask · Faucet: <a href="https://faucet.testnet.chain.robinhood.com/" target="_blank" rel="noopener">testnet faucet</a> · No real value';
+    }
+
+    document.body.insertBefore(banner, document.body.firstChild);
+    document.body.classList.add("has-site-banner");
   }
 
   function renderContracts() {
@@ -735,9 +766,74 @@
     $all("[data-clock-in], [data-nav-clock]").forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         e.preventDefault();
+        var wallet = window.IBH && window.IBH.wallet;
+        var live = window.IBH && window.IBH.live;
+
+        // Wallet available: clock in = connect + live balance; clock out = clear session.
+        if (wallet) {
+          if (isClockedIn()) {
+            setClockedIn(false);
+            renderMembership();
+            renderPersonalHistory();
+            return;
+          }
+          btn.disabled = true;
+          btn.textContent = "Connecting…";
+          wallet
+            .connect()
+            .then(function (addr) {
+              if (!addr) throw new Error("No account returned");
+              setClockedIn(true);
+              if (live) return live.refreshMember(addr);
+            })
+            .then(function () {
+              renderMembership();
+              renderPersonalHistory();
+              formatProtocol();
+            })
+            .catch(function (err) {
+              console.warn("clock in", err);
+              alert(err && err.message ? err.message : String(err));
+            })
+            .finally(function () {
+              btn.disabled = false;
+              renderMembership();
+            });
+          return;
+        }
+
+        // Fallback: local mock toggle (preview without wallet scripts).
         setClockedIn(!isClockedIn());
         renderMembership();
         renderPersonalHistory();
+      });
+    });
+  }
+
+  /** After wallet connect / page load: hydrate live balances if already clocked in. */
+  function hydrateLive() {
+    var wallet = window.IBH && window.IBH.wallet;
+    var live = window.IBH && window.IBH.live;
+    if (!wallet || !live) return;
+
+    live.refreshProtocol().then(function () {
+      formatProtocol();
+    });
+
+    wallet.getAccounts().then(function (addr) {
+      if (!addr) return;
+      if (!isClockedIn()) setClockedIn(true);
+      return live.refreshMember(addr).then(function () {
+        renderMembership();
+        renderPersonalHistory();
+      });
+    });
+
+    wallet.onChange(function (state) {
+      if (!state || !state.address) return;
+      if (!isClockedIn()) return;
+      live.refreshMember(state.address).then(function () {
+        renderMembership();
       });
     });
   }
@@ -807,6 +903,7 @@
     if (window.IBH && typeof window.IBH.applyTestnetConfig === "function") {
       window.IBH.applyTestnetConfig();
     }
+    renderSiteBanner();
     formatConfigLabels();
     formatProtocol();
     renderLatestRun();
@@ -823,6 +920,7 @@
     bindNavToggle();
     bindSwapForm();
     bindRowLinks();
+    hydrateLive();
   }
 
   if (document.readyState === "loading") {

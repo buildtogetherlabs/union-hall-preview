@@ -1970,3 +1970,34 @@ table.ledger tr.is-link:hover td {
    7 Recent distributions (treasury ledger)
    8 Disclaimer (footer)
 */
+
+/* ── Site mode ribbon (demo / testnet public builds) ─────────────────────── */
+.site-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 8px 16px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  border-bottom: 2px solid var(--rule-heavy);
+  line-height: 1.45;
+}
+.site-banner a {
+  color: inherit;
+  text-decoration: underline;
+}
+.site-banner--demo {
+  background: #f0ebe3;
+  color: var(--ink);
+}
+.site-banner--testnet {
+  background: var(--burgundy);
+  color: var(--gold);
+}
+.site-banner--testnet a {
+  color: var(--gold);
+}
+body.has-site-banner .topbar {
+  /* banner sits above sticky header flow */
+}
